@@ -1,17 +1,19 @@
 /* eslint-disable react/prop-types */
-// SolanaWallet.js
 import { derivePath } from "ed25519-hd-key";
 import { Keypair } from "@solana/web3.js";
 import nacl from "tweetnacl";
 import { mnemonicToSeed } from "bip39";
 import { useState } from "react";
 import bs58 from "bs58";
+import { Plus, Copy, Wallet } from "lucide-react";
 
-function SolanaWallet({ mnemonic }) {
+const SolanaWallet = ({ mnemonic }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [wallets, setWallets] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   const handleWalletGeneration = async () => {
+    setLoading(true);
     const seed = await mnemonicToSeed(mnemonic);
     const path = `m/44'/501'/${currentIndex}'/0'`;
     const derivedSeed = derivePath(path, seed.toString("hex")).key;
@@ -21,11 +23,12 @@ function SolanaWallet({ mnemonic }) {
     const wallet = {
       publicKey: keyPair.publicKey.toBase58(),
       secretKey: bs58.encode(secret),
-      balance: null, // Placeholder for balance
+      balance: null,
     };
 
     setWallets([...wallets, wallet]);
     setCurrentIndex(currentIndex + 1);
+    setLoading(false);
   };
 
   const handleWalletDetails = async (walletIndex) => {
@@ -47,9 +50,8 @@ function SolanaWallet({ mnemonic }) {
     );
 
     const data = await response.json();
-    const balance = data.result?.value || 0; // Default to 0 if no balance
+    const balance = data.result?.value || 0;
 
-    // Update the wallet balance
     const updatedWallets = [...wallets];
     updatedWallets[walletIndex] = {
       ...wallet,
@@ -59,86 +61,124 @@ function SolanaWallet({ mnemonic }) {
     setWallets(updatedWallets);
   };
 
-  const copyToClipboard = (text) => {
-    navigator.clipboard.writeText(text).then(() => {
-      alert("Copied to clipboard!");
-    });
+  const copyToClipboard = async (text) => {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch (err) {
+      console.error("Failed to copy:", err);
+    }
   };
 
   return (
-    <div className="flex flex-col items-center p-8 bg-white rounded-lg shadow-lg transition-all duration-300 hover:shadow-xl">
-      <h2 className="text-3xl font-bold mb-8 text-purple-600">Solana Wallet</h2>
-      <button
-        onClick={handleWalletGeneration}
-        className="bg-purple-500 hover:bg-purple-600 text-white font-semibold rounded-full px-8 py-4 mb-8 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-purple-300 shadow-md"
-      >
-        Add New Solana Wallet
-      </button>
+    <div className="bg-gradient-to-br from-gray-900 to-blue-900  rounded-xl border border-blue-500/20 p-4 sm:p-6 lg:p-8 shadow-xl transition-all duration-300 hover:shadow-blue-500/10">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-0 mb-8">
+        <div className="flex items-center gap-4">
+          <Wallet className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
+          <h2 className="text-2xl sm:text-3xl font-bold text-transparent bg-clip-text bg-white">
+            Solana Wallet
+          </h2>
+        </div>
 
-      <section className="w-full bg-gray-50 p-6 rounded-lg shadow-inner">
+        <button
+          onClick={handleWalletGeneration}
+          disabled={loading}
+          className="w-full sm:w-auto bg-gradient-to-r to-blue-500 from-gray-600 text-white font-semibold rounded-xl px-4 sm:px-6 py-2 sm:py-3
+                     transition-all duration-300 transform hover:scale-[1.02] hover:shadow-lg disabled:opacity-50
+                     focus:outline-none focus:ring-4 focus:ring-blue-500/50 group"
+        >
+          <div className="flex items-center justify-center gap-3">
+            <Plus className="w-4 h-4 sm:w-5 sm:h-5 group-hover:rotate-90 transition-transform duration-300" />
+            <span className="text-sm sm:text-base">
+              {loading ? "Generating..." : "Create New Wallet"}
+            </span>
+          </div>
+        </button>
+      </div>
+
+      <div className="space-y-6">
         {wallets.length === 0 ? (
-          <div className="text-center text-gray-500 py-6">
-            No wallets added yet.
+          <div className="text-center py-8 sm:py-12 text-gray-400 bg-gray-800/20 rounded-xl border border-blue-500/20">
+            <div className="flex flex-col items-center gap-4">
+              <Wallet className="w-12 h-12 sm:w-16 sm:h-16 text-blue-400/50" />
+              <p className="text-base sm:text-lg text-blue-300">
+                Create a new wallet to get started
+              </p>
+            </div>
           </div>
         ) : (
           wallets.map((wallet, index) => (
             <div
               key={index}
-              className="flex flex-col items-start justify-between border-b border-gray-200 py-6 text-gray-700 mb-6 last:border-b-0 last:mb-0"
+              className="bg-gray-800/20 rounded-xl p-4 sm:p-6 border border-blue-500/20 transition-all duration-300 hover:border-blue-500/40"
             >
-              <div className="w-full flex justify-between items-center mb-4">
-                <span className="font-semibold text-lg text-purple-600">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-0 mb-6">
+                <span className="text-lg sm:text-xl font-semibold text-blue-300">
                   Wallet {index + 1}
                 </span>
-                <button
-                  onClick={() => handleWalletDetails(index)}
-                  className="bg-green-500 hover:bg-green-600 text-white font-semibold rounded-full px-4 py-2 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-green-300 shadow-md"
-                >
-                  View Details
-                </button>
-              </div>
-              <div className="w-full mb-4">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="font-medium text-purple-600">Address:</span>
+                {wallet.balance === null ? (
                   <button
-                    onClick={() => copyToClipboard(wallet.publicKey)}
-                    className="text-blue-500 hover:text-blue-600 focus:outline-none"
+                    onClick={() => handleWalletDetails(index)}
+                    className="w-full sm:w-auto bg-gradient-to-r from-gray-600 to-blue-500 text-white px-4 py-2 rounded-lg
+                               transition-all duration-300 transform hover:scale-105 hover:shadow-lg
+                               focus:outline-none focus:ring-4 focus:ring-blue-500/50"
                   >
-                    Copy
+                    <span className="text-sm sm:text-base">Fetch Balance</span>
                   </button>
-                </div>
-                <span className="font-mono text-sm break-all">
-                  {wallet.publicKey}
-                </span>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs sm:text-sm text-gray-400">
+                      Balance:
+                    </span>
+                    <span className="text-base sm:text-lg font-semibold text-blue-300">
+                      {wallet.balance / 1000000000} SOL
+                    </span>
+                  </div>
+                )}
               </div>
-              <div className="w-full mb-4">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="font-medium text-red-600">Private Key:</span>
-                  <button
-                    onClick={() => copyToClipboard(wallet.secretKey)}
-                    className="text-blue-500 hover:text-blue-600 focus:outline-none"
-                  >
-                    Copy
-                  </button>
+
+              <div className="flex flex-col gap-4">
+                <div className="bg-gray-900/40 rounded-lg p-3 sm:p-4 border border-blue-500/20">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs sm:text-sm font-medium text-blue-300">
+                      Public Address
+                    </span>
+                    <button
+                      onClick={() => copyToClipboard(wallet.publicKey)}
+                      className="flex items-center gap-2 text-blue-400 hover:text-blue-300 transition-colors"
+                    >
+                      <Copy className="w-3 h-3 sm:w-4 sm:h-4" />
+                      <span className="text-xs sm:text-sm">Copy</span>
+                    </button>
+                  </div>
+                  <div className="font-mono text-xs sm:text-sm text-gray-300 break-all bg-gray-900/40 p-2 sm:p-3 rounded-lg">
+                    {wallet.publicKey}
+                  </div>
                 </div>
-                <span className="font-mono text-sm break-all">
-                  {wallet.secretKey}
-                </span>
+
+                <div className="bg-gray-900/40 rounded-lg p-3 sm:p-4 border border-blue-500/20">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs sm:text-sm font-medium text-blue-300">
+                      Private Key
+                    </span>
+                    <button
+                      onClick={() => copyToClipboard(wallet.secretKey)}
+                      className="flex items-center gap-2 text-blue-400 hover:text-blue-300 transition-colors"
+                    >
+                      <Copy className="w-3 h-3 sm:w-4 sm:h-4" />
+                      <span className="text-xs sm:text-sm">Copy</span>
+                    </button>
+                  </div>
+                  <div className="font-mono text-xs sm:text-sm text-gray-300 break-all bg-gray-900/40 p-2 sm:p-3 rounded-lg">
+                    {wallet.secretKey}
+                  </div>
+                </div>
               </div>
-              {wallet.balance !== null && (
-                <div className="w-full">
-                  <span className="font-medium text-green-600">Balance:</span>
-                  <span className="font-mono text-sm ml-2">
-                    {wallet.balance / 1000000000} SOL
-                  </span>
-                </div>
-              )}
             </div>
           ))
         )}
-      </section>
+      </div>
     </div>
   );
-}
+};
 
 export default SolanaWallet;
